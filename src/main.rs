@@ -49,7 +49,7 @@ fn propagate_carry(s:String, c: char) -> (String,char){
 /************* Add Binary *************/
 
 #[allow(dead_code)]
-fn seq_add_binary_v1(a: String, b: String) -> String {
+pub fn seq_add_binary_v1(a: String, b: String) -> String {
     // Padding the strings with 0s to be the same length with an extra 0
     let (b1,b2) = pad_binaries(a, b);
     // This will carry our result
@@ -67,7 +67,7 @@ fn seq_add_binary_v1(a: String, b: String) -> String {
 }
 
 #[allow(dead_code)]
-fn seq_add_binary_v2(a: String, b: String) -> String {
+pub fn seq_add_binary_v2(a: String, b: String) -> String {
     // Padding the strings with 0s to be the same length with an extra 0
     let (b1,b2) = pad_binaries(a, b);
 
@@ -117,7 +117,7 @@ fn par_add_rec(a: &str, b: &str, level: u32) -> (String, char){
     (output, output_carry)
 }
 
-fn par_add_binary(a: String, b: String, level: u32) -> String{
+pub fn par_add_binary(a: String, b: String, level: u32) -> String{
     assert!(level>0);
     let (b1,b2) = pad_binaries(a, b);
     let (s_o,_) = par_add_rec(&b1, &b2, level);
@@ -126,8 +126,8 @@ fn par_add_binary(a: String, b: String, level: u32) -> String{
 
 /************* Main *************/
 fn main() {
-    const SIZE_LOWER_BOUND: u32 = 131072;
-    const LEVELS: u32 = 5;
+    const SIZE_LOWER_BOUND: u32 = 1<<18;
+    const LEVELS: u32 = 4;
 
     let mut rng = rand::thread_rng();
     let a: String = (0..rng.gen_range(SIZE_LOWER_BOUND..2*SIZE_LOWER_BOUND)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
