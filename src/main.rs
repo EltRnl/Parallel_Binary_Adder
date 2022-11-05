@@ -1,19 +1,6 @@
-use std::{char::from_digit, mem::take};
-
 use rand::Rng;
-use rayon::{string, result};
 
-
-fn xor(c1: char, c2: char) -> char{
-    if c1=='0' {return c2;}
-    if c2=='0' {return '1';}
-    return '0';
-}
-
-fn and(c1: char, c2: char) -> char{
-    if c1=='1' && c2=='1' {return '1';}
-    return '0';
-}
+/************* Auxiliary Functions *************/
 
 fn add_bits(b1: char, b2: char, c: char) -> (char, char){
     let s: u32 = [b1,b2,c].into_iter().map(|e| e.to_digit(10).unwrap()).sum();
@@ -38,7 +25,10 @@ fn pad_binaries(b1: String, b2: String) -> (String, String) {
     (o1,o2)
 }
 
-fn seq_add_binary(a: String, b: String) -> String {
+/************* Add Binary *************/
+
+
+fn seq_add_binary_v1(a: String, b: String) -> String {
     // Padding the strings with 0s to be the same length with an extra 0
     let (b1,b2) = pad_binaries(a, b);
     // This will carry our result
@@ -55,14 +45,24 @@ fn seq_add_binary(a: String, b: String) -> String {
     result
 }
 
+fn seq_add_binary_v2(a: String, b: String) -> String {
+    // Padding the strings with 0s to be the same length with an extra 0
+    let (b1,b2) = pad_binaries(a, b);
+
+    b1.chars().rev().into_iter()
+    .zip(b2.chars().rev().into_iter())
+    .fold(("".to_string(),'0'), |(res,c),(a,b)| {
+        let out = add_bits(a,b,c);
+        (out.0.to_string() + &res,out.1)
+    }).0
+}
+
 fn main() {
     let mut rng = rand::thread_rng();
-    let a: String = (0..rng.gen_range(100..200)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
-    //let a: String = (0..).into_iter().map(|_| '1').take(1).collect::<String>();
-    let b: String = (0..rng.gen_range(100..200)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
-    //let b: String = (0..rng.gen_range(100..200)).into_iter().map(|_| '1').collect::<String>();
+    let a: String = (0..rng.gen_range(150000..200000)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
+    let b: String = (0..rng.gen_range(150000..200000)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
 
-    
-    let result = seq_add_binary(a.clone(), b.clone());
-    println!("A = {} \n\nB = {} \n\nA + B = {}",a,b,result);
+    let start = std::time::Instant::now();
+    let seq_res = seq_add_binary_v2(a.clone(), b.clone());
+    println!("Sequential done in {:?}!",start.elapsed());
 }
