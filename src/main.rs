@@ -1,5 +1,6 @@
 /************* Cargos *************/
 
+use std::env;
 use rand::Rng;
 use std::iter;
 use rayon::{prelude::{IntoParallelIterator, ParallelIterator}, str::ParallelString};
@@ -126,24 +127,74 @@ pub fn par_add_binary(a: String, b: String, level: u32) -> String{
 
 /************* Main *************/
 fn main() {
-    const SIZE_LOWER_BOUND: u32 = 1<<18;
-    const LEVELS: u32 = 4;
+    let help: String = 
+    "Usage : cargo run -- [Size] [Levels] [Iterations]
+        > Size : used to calculate the size lower bound 2^Size 
+        (default Size = 18)
+        > Levels : the number of levels in the parallel recusion, 
+        creating 2^(Levels-1) parallel process (default Levels = 4)
+        > Iterations : number of time we executes the calculation 
+        with random numbers each time (default 1)
+    ".to_string();
+    println!("{}",help);
 
-    let mut rng = rand::thread_rng();
-    let a: String = (0..rng.gen_range(SIZE_LOWER_BOUND..2*SIZE_LOWER_BOUND)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
-    let b: String = (0..rng.gen_range(SIZE_LOWER_BOUND..2*SIZE_LOWER_BOUND)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
+    let args: Vec<String> = env::args().collect();
+    let argc: usize = args.len();
+    assert!(argc<5);
 
-    let start = std::time::Instant::now();
-    let seq_res = seq_add_binary_v2(a.clone(), b.clone());
-    println!("Sequential done in {:?}!",start.elapsed());
+    let mut size_lower_bound: u32 = 1<<18;
+    if argc>1 {
+        match args[1].parse::<u32>() {
+            Ok(v) =>  {size_lower_bound = 1<<v; println!("Size given {}.",v);},
+            Err(_e) => {println!("Could not read Size '{}', using default Size=18.",args[1]);},
+        }
+    }else{
+        println!("No value given for Size, using default Size=18.");
+    }
+    
+    let mut levels: u32 = 4;
+    if argc>2 {
+        match args[2].parse::<u32>() {
+            Ok(v) =>  {levels = v; println!("Levels given {}.",v);}, 
+            Err(_e) => {println!("Could not read Levels '{}', using default Levels=4.",args[2]);},
+        }
+    }else{
+        println!("No value given for Levels, using default Levels=4.");
+    }
 
-    let start = std::time::Instant::now();
-    let par_res = par_add_binary(a.clone(), b.clone(),LEVELS);
-    println!("Parallel done in {:?}!",start.elapsed());
-    assert!(par_res == seq_res);
+    let mut iterations: u32 = 1;
+    if argc>3 {
+        match args[3].parse::<u32>() {
+            Ok(v) =>  {iterations = v; println!("Iteration given {}.",v);},
+            Err(_e) => {println!("Could not read Iterations '{}', using default Iterations=1.",args[3]);},
+        }
+    }else{
+        println!("No value given for Iterations, using default Iterations=1.");
+    }
 
-    diam::svg("Parallel-Add-Binary.svg", || {
-        par_add_binary(a.clone(), b.clone(),LEVELS);
-    })
-    .expect("failed saving svg file");
+    for it in 0..iterations {
+        let mut rng = rand::thread_rng();
+        let a: String = (0..rng.gen_range(size_lower_bound..2*size_lower_bound)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
+        let b: String = (0..rng.gen_range(size_lower_bound..2*size_lower_bound)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
+
+        println!("\nStarting sequential version...");
+        let start = std::time::Instant::now();
+        let seq_res = seq_add_binary_v2(a.clone(), b.clone());
+        println!("Sequential done in {:?}!",start.elapsed());
+        
+        println!("\nStarting parallel version...");
+        let start = std::time::Instant::now();
+        let par_res = par_add_binary(a.clone(), b.clone(),levels);
+        println!("Parallel done in {:?}!",start.elapsed());
+        assert!(par_res == seq_res);
+    
+        let svg_path = format!("Parallel-Add-Binary-#{}.svg",it+1);
+        println!("\nSaving Parallel Log svg file {}.",svg_path);
+        diam::svg(svg_path, || {
+            par_add_binary(a.clone(), b.clone(),levels);
+        })
+        .expect("Failed saving svg file.");
+    }
+    
+
 }
