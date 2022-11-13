@@ -1,6 +1,6 @@
 /************* Cargos *************/
 
-use std::env;
+use std::{env, time::{Instant, Duration}, ops::Add};
 use rand::Rng;
 use std::iter;
 use rayon::{prelude::{IntoParallelIterator, ParallelIterator}, str::ParallelString};
@@ -127,74 +127,73 @@ pub fn par_add_binary(a: String, b: String, level: u32) -> String{
 
 /************* Main *************/
 fn main() {
-    let help: String = 
-    "Usage : cargo run -- [Size] [Levels] [Iterations]
-        > Size : used to calculate the size lower bound 2^Size 
-        (default Size = 18)
-        > Levels : the number of levels in the parallel recusion, 
-        creating 2^(Levels-1) parallel process (default Levels = 4)
-        > Iterations : number of time we executes the calculation 
-        with random numbers each time (default 1)
-    ".to_string();
-    println!("{}",help);
-
-    let args: Vec<String> = env::args().collect();
-    let argc: usize = args.len();
-    assert!(argc<5);
-
     let mut size_lower_bound: u32 = 1<<18;
-    if argc>1 {
-        match args[1].parse::<u32>() {
-            Ok(v) =>  {size_lower_bound = 1<<v; println!("Size given {}.",v);},
-            Err(_e) => {println!("Could not read Size '{}', using default Size=18.",args[1]);},
-        }
-    }else{
-        println!("No value given for Size, using default Size=18.");
-    }
+
+    let iterations: u32 = 100;
+
+    let mut seq_times: Duration;
+    let mut par_times_1: Duration;
+    let mut par_times_2: Duration;
+    let mut par_times_3: Duration;
+    let mut par_times_4: Duration;
+    let mut par_times_5: Duration;
+
     
-    let mut levels: u32 = 4;
-    if argc>2 {
-        match args[2].parse::<u32>() {
-            Ok(v) =>  {levels = v; println!("Levels given {}.",v);}, 
-            Err(_e) => {println!("Could not read Levels '{}', using default Levels=4.",args[2]);},
+    let mut rng = rand::thread_rng();
+
+
+    for size in 10..21{
+        size_lower_bound = 1<<size;
+        seq_times = Duration::new(0, 0);
+        par_times_1 = Duration::new(0, 0);
+        par_times_2 = Duration::new(0, 0);
+        par_times_3 = Duration::new(0, 0);
+        par_times_4 = Duration::new(0, 0);
+        par_times_5 = Duration::new(0, 0);
+
+        for _ in 0..iterations {
+            let a: String = (0..size_lower_bound).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
+            let b: String = (0..size_lower_bound).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
+            
+            // Sequential Version
+            let start = std::time::Instant::now();
+            let seq_res = seq_add_binary_v2(a.clone(), b.clone());
+            seq_times += start.elapsed();
+
+            // Parallel Version
+            let start = std::time::Instant::now();
+            let par_res = par_add_binary(a.clone(), b.clone(),1);
+            par_times_1 += start.elapsed();
+            assert_eq!(seq_res,par_res);
+
+            let start = std::time::Instant::now();
+            let par_res = par_add_binary(a.clone(), b.clone(),2);
+            par_times_2 += start.elapsed();
+            assert_eq!(seq_res,par_res);
+
+            let start = std::time::Instant::now();
+            let par_res = par_add_binary(a.clone(), b.clone(),3);
+            par_times_3 += start.elapsed();
+            assert_eq!(seq_res,par_res);
+
+            let start = std::time::Instant::now();
+            let par_res = par_add_binary(a.clone(), b.clone(),4);
+            par_times_4 += start.elapsed();
+            assert_eq!(seq_res,par_res);
+
+            let start = std::time::Instant::now();
+            let par_res = par_add_binary(a.clone(), b.clone(),5);
+            par_times_5 += start.elapsed();    
+            assert_eq!(seq_res,par_res);
         }
-    }else{
-        println!("No value given for Levels, using default Levels=4.");
+        println!("###########################################");
+        println!("Settings : Size={}",size_lower_bound);
+        println!("Average Sequential Time : {:?}",seq_times/iterations);
+        println!("Average Parallel Time (levels={}) : {:?}",1,par_times_1/iterations);
+        println!("Average Parallel Time (levels={}) : {:?}",2,par_times_2/iterations);
+        println!("Average Parallel Time (levels={}) : {:?}",3,par_times_3/iterations);
+        println!("Average Parallel Time (levels={}) : {:?}",4,par_times_4/iterations);
+        println!("Average Parallel Time (levels={}) : {:?}",5,par_times_5/iterations);
+        println!("###########################################");
     }
-
-    let mut iterations: u32 = 1;
-    if argc>3 {
-        match args[3].parse::<u32>() {
-            Ok(v) =>  {iterations = v; println!("Iteration given {}.",v);},
-            Err(_e) => {println!("Could not read Iterations '{}', using default Iterations=1.",args[3]);},
-        }
-    }else{
-        println!("No value given for Iterations, using default Iterations=1.");
-    }
-
-    for it in 0..iterations {
-        let mut rng = rand::thread_rng();
-        let a: String = (0..rng.gen_range(size_lower_bound..2*size_lower_bound)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
-        let b: String = (0..rng.gen_range(size_lower_bound..2*size_lower_bound)).into_iter().map(|_| {if rng.gen_bool(0.5) {'0'} else {'1'}}).collect::<String>();
-
-        println!("\nStarting sequential version...");
-        let start = std::time::Instant::now();
-        let seq_res = seq_add_binary_v2(a.clone(), b.clone());
-        println!("Sequential done in {:?}!",start.elapsed());
-        
-        println!("\nStarting parallel version...");
-        let start = std::time::Instant::now();
-        let par_res = par_add_binary(a.clone(), b.clone(),levels);
-        println!("Parallel done in {:?}!",start.elapsed());
-        assert!(par_res == seq_res);
-    
-        let svg_path = format!("Parallel-Add-Binary-#{}.svg",it+1);
-        println!("\nSaving Parallel Log svg file {}.",svg_path);
-        diam::svg(svg_path, || {
-            par_add_binary(a.clone(), b.clone(),levels);
-        })
-        .expect("Failed saving svg file.");
-    }
-    
-
 }
